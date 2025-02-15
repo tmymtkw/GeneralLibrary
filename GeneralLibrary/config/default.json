@@ -6,12 +6,14 @@
         "target": "original/",
         "output": "GeneralLibrary/outputs/"
     },
-    "mode": {
-        "run": 0,
-        "device": "cuda"
+    "option": {
+        "mode": 0,
+        "device": "cuda",
+        "interval": 3
     },
     "hyperparam": {
         "epoch": 10,
+        "lr": 1.0e-3,
         "batch_size": 48,
         "iteration": 10000,
         "num_workers": 4

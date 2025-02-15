@@ -1,5 +1,5 @@
 from util.data.transforms.basetransform import BaseTransform
-from torchvision.transforms.functional_tensor import crop
+from torchvision.transforms.v2.functional import crop
 
 class RandomCrop(BaseTransform):
     def __init__(self, height=1024, width=1024, seed=0):

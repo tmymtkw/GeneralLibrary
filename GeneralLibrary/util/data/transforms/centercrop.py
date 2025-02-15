@@ -1,5 +1,5 @@
 from util.data.transforms.basetransform import BaseTransform
-from torchvision.transforms.functional import center_crop
+from torchvision.transforms.v2.functional import center_crop
 
 class CenterCrop(BaseTransform):
     def __init__(self, h=1024, w=1200, seed=0):

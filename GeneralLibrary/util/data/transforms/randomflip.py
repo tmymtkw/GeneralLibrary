@@ -1,5 +1,5 @@
 from util.data.transforms.basetransform import BaseTransform
-from torchvision.transforms.functional_tensor import hflip, vflip
+from torchvision.transforms.v2.functional import hflip, vflip
 
 class RandomFlip(BaseTransform):
     def __init__(self, seed=0):

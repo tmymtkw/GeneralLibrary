@@ -2,9 +2,11 @@ import os
 from torch.utils.data import Dataset
 from torchvision import io
 from util.data.transforms.stack import Stack
-from util.data.transforms.centercrop import CenterCrop
+# from util.data.transforms.centercrop import CenterCrop
 from util.data.transforms.randomflip import RandomFlip
 from util.data.transforms.randomcrop import RandomCrop
+# from util.data.transforms.scaling import Scaling
+from util.data.transforms.convert import Convert
 
 class ImageToImageDataset(Dataset):
     def __init__(self, img_dir, input_dir, target_dir, seed=42):
@@ -21,8 +23,8 @@ class ImageToImageDataset(Dataset):
 
         self.stack = Stack(seed=seed)
         self.stack.Push(RandomCrop(seed=seed))
-        # self.stack.Push(CenterCrop(seed=seed))
         self.stack.Push(RandomFlip(seed=seed))
+        self.stack.Push(Convert(convert_type="float32"))
 
     def __len__(self) -> int:
         return len(self.input_id)

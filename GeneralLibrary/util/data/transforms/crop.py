@@ -1,6 +1,6 @@
 from util.data.transforms.basetransform import BaseTransform
-from torchvision.transforms.functional import crop
-# from torchvision.transforms.v2 import functional as tf
+# from torchvision.transforms.functional import crop
+from torchvision.transforms.v2.functional import crop
 
 class Crop(BaseTransform):
     def __init__(self, top=0, left=0, height=1024, width=1024, seed=0):
