@@ -1,8 +1,10 @@
 from scripts.analyzer import Analyzer
+from loss.mse import MSELoss
+from model.net import Net
+from torch.optim import Adam
 
 TRAIN = 0
-VALIDATION = 1
-TEST = 2
+TEST = 1
 
 class Runner(Analyzer):
     def __init__(self):
@@ -26,8 +28,12 @@ class Runner(Analyzer):
                            drop_last=self.is_train)
         
         # モデル定義
-        self.SetModel()
+        self.model = Net()
+        self.model.to(self.device)
         # オプティマイザ定義
+        self.optimizer = Adam(self.model.parameters(), lr=self.cfg.GetHyperParam("lr"))
+        # 損失関数設定
+        self.criteria = MSELoss()
         # 使用プロセッサ設定
         self.SetDevice(device=self.cfg.GetInfo("option", "device"))
 
@@ -44,9 +50,6 @@ class Runner(Analyzer):
         # Train
         if self.is_train:
             self.Train()
-        # Validation
-        elif self.args.mode == VALIDATION:
-            self.Validate()
         # Test
         elif self.args.mode == TEST:
             pass

@@ -9,10 +9,13 @@
     "option": {
         "mode": 0,
         "device": "cuda",
-        "interval": 3
+        "interval": 10,
+        "val_interval": 1,
+        "cli_interval": 3,
+        "save_interval": 1
     },
     "hyperparam": {
-        "epoch": 10,
+        "epoch": 2,
         "lr": 1.0e-3,
         "batch_size": 48,
         "iteration": 10000,
