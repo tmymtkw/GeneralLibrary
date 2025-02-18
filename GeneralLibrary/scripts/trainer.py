@@ -1,3 +1,5 @@
+from torch import save, Tensor
+# TODO
 from torch.nn import Module
 from torch.utils.data import DataLoader
 from util.data.dataset import ImageToImageDataset
@@ -9,8 +11,12 @@ class Trainer(Recorder):
         super().__init__()
         
         self.model: Module = None
-        self.dataset: ImageToImageDataset = None
-        self.dataloader: DataLoader = None
+        self.dataset: list[ImageToImageDataset] = []
+        self.dataloader: list[DataLoader] = []
+        self.train_dataset: ImageToImageDataset = None
+        self.valid_dataset: ImageToImageDataset = None
+        self.train_dataloader: DataLoader = None
+        self.valid_dataloader: DataLoader = None
         self.optimizer = None
         self.criteria = None
         self.SetDevice(self.cfg.GetInfo("option", "device"))
@@ -31,10 +37,20 @@ class Trainer(Recorder):
         for epoch in range(self.epochs):
             self.Process(epoch=epoch, is_train=True)
 
-            # TODO: 比較と保存処理
+            # Validation
+            if ((epoch+1) % self.cfg.GetInfo("option", "val_interval") == 0):
+                self.Validate(epoch=epoch)
+            
+            # 重み保存
+            if ((epoch+1) % self.cfg.GetInfo("option", "save_interval") or (epoch + 1) == self.epochs):
+                self.PutModel(epoch)
+
+    def Validate(self, epoch):
+        self.Debug("---validation---")
+        self.Process(epoch=epoch, is_train=False)
 
     def Process(self, epoch, is_train=True):
-        """1エポック分の学習を実施する関数
+        """データローダー1周分の処理を実施する関数
 
         is_trainがFalseの時は逆伝播を行わない
 
@@ -46,23 +62,46 @@ class Trainer(Recorder):
         else:
             self.model.eval()
 
-        for i, (img_input, img_target) in enumerate(self.dataloader):
+        loss = None
+        # 学習
+        for i, (img_input, img_target) in enumerate(self.dataloader[0], 1):
             # GPU(CPU)にデータを移動
-            img_input = img_input.to(self.device)
-            img_target = img_target.to(self.device)
+            img_input = img_input.to(self.device, non_blocking=True)
+            img_target = img_target.to(self.device, non_blocking=True)
 
             # 順伝播
             img_output = self.model(img_input)
             # 損失の計算
-            # loss = self.criteria(img_output, img_target)
-            # 逆伝播
-            # loss.backward()
-            # オプティマイザの更新
+            loss = self.criteria(img_output, img_target)
+
+            if is_train:
+                # 学習を行うとき
+                # 購買情報の初期化
+                self.optimizer.zero_grad()
+                # 逆伝播
+                loss.backward()
+                # オプティマイザの更新
+                self.optimizer.step()
+
+            if (i + 1) % self.cfg.GetInfo("option", "cli_interval"):
+                # ターミナルに学習状況を表示
+                self.DisplayStatus(epoch,
+                                i,
+                                self.epochs,
+                                len(self.train_dataset) // self.cfg.GetHyperParam("batch_size"),
+                                self.cfg.GetHyperParam("lr"),
+                                loss=loss.item())
+                if not is_train:
+                    self.Info(f"validating...{loss.item()}", extra={ "n": 1 })
             
-            # TODO
-            if i % self.cfg.GetInfo("option", "interval") != 0:
-                continue
-            self.DisplayStatus(epoch, i, self.epochs, len(self.dataset) // self.cfg.GetHyperParam("batch_size"), self.cfg.GetHyperParam("lr"))
+            
+    def PutModel(self, epoch, loss=0.0):
+        save(obj={"epoch": epoch,
+                  "model_state_dict": self.model.state_dict(),
+                  "optimizer_state_dict": self.optimizer.state_dict(),
+                  "loss": loss},
+             f=self.cfg.GetPath("output") + f"weight_{epoch+1}.pth")
+        self.Debug("model weight is saved.")
 
     def SetModel(self, model_class=Net):        
         self.model = model_class()
@@ -71,7 +110,8 @@ class Trainer(Recorder):
         self.Debug("Model created.")
 
     def SetDataset(self, img_dir, input_dir, target_dir):
-        self.dataset = ImageToImageDataset(img_dir, input_dir, target_dir)
+        self.train_dataset = ImageToImageDataset(img_dir, input_dir, target_dir)
+        self.dataset.append(self.train_dataset)
         self.Debug("Dataset created.")
 
     def SetDataLoader(self,
@@ -80,12 +120,14 @@ class Trainer(Recorder):
                       num_workers=4,
                       pin_memory=True,
                       drop_last=True):
-        self.dataloader = DataLoader(self.dataset,
+        # TODO: for d in self.dataset:
+        self.train_dataloader = DataLoader(self.train_dataset,
                                      batch_size=batch_size,
                                      shuffle=shuffle,
                                      num_workers=num_workers,
                                      pin_memory=pin_memory,
                                      drop_last=drop_last)
+        self.dataloader.append(self.train_dataloader)
         self.Debug("Dataloader created.")
         
     def SetDevice(self, device):

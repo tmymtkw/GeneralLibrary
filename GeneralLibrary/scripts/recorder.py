@@ -1,4 +1,4 @@
-import os.path as path
+import os
 from datetime import date, datetime
 from logging import getLogger, StreamHandler, FileHandler, Formatter, DEBUG, INFO
 from util.logtool.logfilter import LogFilter
@@ -12,18 +12,23 @@ class Recorder(object):
         parser = MainParser()
         # コマンド受け取り
         self.args = parser.parse_args()
-        # self.Debug(self.args)
         self.cfg = ConfigLoader(self.args.cfg_path)
 
+        # "output"ディレクトリがあるか確認
+        assert os.path.isdir(self.cfg.GetPath("output")), f"\n[ERROR] incorrect dir: {self.cfg.GetPath('output')}"
+
+        # プログラム実行日時を出力用ディレクトリ名にする
         d = datetime.now().strftime("%Y-%m%d-%H%M%S")
+        self.cfg.cfg["path"]["output"] += d + "/"
         dir = self.cfg.GetPath("output")
-        file = d + ".log"
-
-        assert path.isdir(dir), f"\n[ERROR] incorrect dir: {dir}"
-
-        with open(path.join(dir, file), "w") as f:
+        file = "output.log"
+        # 存在しなければディレクトリを作成
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+        # ログ用ファイルを作成
+        with open(os.path.join(dir, file), "w") as f:
             d = date.today().strftime("%Y-%m-%d")
-            f.write(f"[Running Date : {d}]\n")
+            f.write(f"[Running Date : {d}]\n\n")
 
         # logger
         self.main_logger = getLogger("log_main")
@@ -36,7 +41,7 @@ class Recorder(object):
         clifmt = "\033[%(n)dA[%(asctime)s] %(message)s\n"
         cli_formatter = Formatter(clifmt, datefmt)
         # ファイル出力のハンドラ
-        file_handler = FileHandler(path.join(dir, file), mode="a+", encoding="utf_8")
+        file_handler = FileHandler(os.path.join(dir, file), mode="a+", encoding="utf_8")
         file_handler.setFormatter(file_formatter)
         file_handler.setLevel(DEBUG)
         # ファイル出力のフィルタ
@@ -79,3 +84,9 @@ class Recorder(object):
 
     def Critical(self, msg):
         self.main_logger.critical(msg=msg)
+
+    def SetLogDigits(self, epoch, iteration):
+        if not self.main_logger.hasHandlers():
+            self.Debug("[NOTICE] SetLogDigits failed. main_logger has no handlers.")
+
+        self.main_logger.handlers[1].filters[0].SetDigits(epoch, iteration)

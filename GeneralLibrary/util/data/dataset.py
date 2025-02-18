@@ -1,12 +1,7 @@
 import os
 from torch.utils.data import Dataset
 from torchvision import io
-from util.data.transforms.stack import Stack
-# from util.data.transforms.centercrop import CenterCrop
-from util.data.transforms.randomflip import RandomFlip
-from util.data.transforms.randomcrop import RandomCrop
-# from util.data.transforms.scaling import Scaling
-from util.data.transforms.convert import Convert
+from util.data.transforms import Stack, RandomFlip, RandomCrop, Convert
 
 class ImageToImageDataset(Dataset):
     def __init__(self, img_dir, input_dir, target_dir, seed=42):
