@@ -91,8 +91,8 @@ class Trainer(Recorder):
                                 len(self.train_dataset) // self.cfg.GetHyperParam("batch_size"),
                                 self.cfg.GetHyperParam("lr"),
                                 loss=loss.item())
-            if not is_train:
-                self.Info(f"validating...{loss.item()}", extra={ "n": 1 })
+                if not is_train:
+                    self.Info(f"validating...{loss.item()}", extra={ "n": 1 })
             
             
     def PutModel(self, epoch, loss=0.0):

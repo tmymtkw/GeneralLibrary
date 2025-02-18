@@ -21,8 +21,8 @@ class CLIFilter():
         itr_bar = self.length * status["cur_itr"] // status["max_itr"]
 
         msg = ("\n[epoc]\t|" + FILL + ("_" * epoch_bar) + CLOSE + "_" * (self.length - epoch_bar) + "|\t\n"
-               + "[itr ]\t|" + FILL + ("_" * itr_bar) + CLOSE + "_" * (self.length - itr_bar) + "|\n"
-               + f"[hprm] lr : {status['lr']:<12f}\n"
+               + "[iter]\t|" + FILL + ("_" * itr_bar) + CLOSE + "_" * (self.length - itr_bar) + "|\n"
+               + f"[parm] lr : {status['lr']:<12f}\n"
                + f"[loss] curr : {status['loss']:<12f} mean : {mean(self.losses):<12f}\n"
                + f"[best]")
         

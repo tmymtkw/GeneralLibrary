@@ -26,6 +26,8 @@ class Runner(Analyzer):
                            num_workers=self.cfg.GetHyperParam("num_workers"),
                            pin_memory=True,
                            drop_last=self.is_train)
+        # ログ書式設定
+        self.SetLogDigits(self.epochs, len(self.train_dataset) // self.cfg.GetHyperParam("batch_size") + 1)
         
         # モデル定義
         self.model = Net()
