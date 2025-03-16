@@ -17,7 +17,7 @@ class ImageToImageDataset(Dataset):
         self.SetImgId()
 
         self.stack = Stack(seed=seed)
-        self.stack.Push(RandomCrop(seed=seed))
+        self.stack.Push(RandomCrop(height=128, width=128, seed=seed))
         self.stack.Push(RandomFlip(seed=seed))
         self.stack.Push(Convert(convert_type="float32"))
 

@@ -2,26 +2,25 @@ from abc import ABC, abstractmethod
 
 class BaseRunner(ABC):
     def __init__(self):
+        # config
+        self.cfg = None
+
         # processor
+        self.processor = None
         self.trainer = None
-        # self.validator
         self.tester = None
         self.analyzer = None
 
-        # config
-        self.cfg = None
-        # logger
-        self.logger = None
-
-        # data
-        self.dataset = None
-        self.dataloader = None
-
         # necessary objects
-        self.model = None
-        self.metrics = None
-        self.losses = None
         self.dictionary = None
+
+    @abstractmethod
+    def run(self, mode):
+        '''main処理
+        
+        引数:
+            - mode -- 実行モード'''
+        raise NotImplementedError()
 
     @abstractmethod
     def setup(self):
@@ -33,16 +32,12 @@ class BaseRunner(ABC):
         4. ログの設定
         5. インスタンス変数設定
         '''
-        NotImplementedError()
+        raise NotImplementedError()
 
     @abstractmethod
-    def run(self, mode):
-        '''main処理
-        
-        引数:
-            - mode -- 実行モード'''
-        NotImplementedError()
+    def build(self):
+        raise NotImplementedError()
 
     @abstractmethod
     def load_cfg(self, path: str):
-        NotImplementedError()
+        raise NotImplementedError()

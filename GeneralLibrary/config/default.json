@@ -1,25 +1,29 @@
 {
     "path": {
-        "dataset": "/home/matsukawa_3/datasets/EBB/Training/",
-        "train": "/home/matsukawa_3/datasets/EBB/Training/",
-        "validation": "/home/matsukawa_3/datasets/EBB/Training/",
-        "test": "/home/matsukawa_3/datasets/EBB/Test",
-        "input": "bokeh/",
-        "target": "original/",
+        "dataset": "/home/matsukawa_3/datasets/UIEB/",
+        "train": ".",
+        "valid": ".",
+        "test": ".",
+        "input": "raw-890/",
+        "target": "reference-890/",
         "output": "GeneralLibrary/outputs/"
     },
     "option": {
         "mode": "null",
         "device": "cuda",
         "interval": 10,
-        "val_interval": 1,
-        "cli_interval": 3,
-        "save_interval": 1
+        "val_interval": 5,
+        "log_interval": 50,
+        "save_interval": 1,
+        "num_workers": 4
+    },
+    "model": {
+        "name": "Net"
     },
     "hyperparam": {
-        "epoch": 1,
+        "epoch": 5,
         "lr": 1.0e-3,
-        "batch_size": 48,
+        "batch_size": 4,
         "iteration": 10000,
         "num_workers": 4
     }

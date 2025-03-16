@@ -4,9 +4,33 @@ from datetime import datetime
 from util.logtool.mainlogger import MainLogger
 from util.parser.mainparser import MainParser
 
+from .processors import BaseProcessor, Trainer, Tester
+from model import Net
+from metrics.psnr import PSNR
+from util.data.dataset import ImageToImageDataset
+
 class Runner(BaseRunner):
     def __init__(self):
         super().__init__()
+
+    def run(self):
+        self.setup()
+
+        self.build()
+
+        mode = self.get_cfg_val("option", "mode")
+
+        assert isinstance(mode, str), f"\n[ERROR] bad mode type: {type(mode)}"
+        # 小文字に統一
+        mode = mode.lower()
+        assert (mode == "train" or mode == "test" or mode == "analyze"), f"\n[ERROR] bad mode: {mode}"
+
+        if mode == "train":
+            self.trainer()
+        # elif mode == "test":
+        #     self.tester(self.model, self.metrics)
+        # elif mode == "analyze":
+        #     self.analyzer(self.model)
 
     def setup(self):
         # 1. コマンドライン引数受け取り
@@ -20,27 +44,58 @@ class Runner(BaseRunner):
         self.cfg["option"]["mode"] = args.mode
 
         # 4. ログの設定
-        self.logger = MainLogger(dir=self.get_path("output"))
+        logger = MainLogger(dir=self.get_path("output"))
         # コンフィグ状況を出力
-        self.logger.debug(self.show_cfg())
-        self.logger.info("runner setup completed")
+        logger.debug(self.show_cfg())
+        BaseProcessor.logger = logger
+        logger.info("runner setup completed")
+        self.down_cursor(1)
 
-    def run(self):
-        self.setup()
+    def build(self):
+        BaseProcessor.logger.info("building...")
+        self.down_cursor(1)
+        # BaseProcessorのクラス変数を定義(全てのインスタンスで共有)
+        model_class = globals()[self.get_cfg_val("model", "name")]
+        BaseProcessor.device = self.get_cfg_val("option", "device")
+        BaseProcessor.model = model_class().to(BaseProcessor.device)
+        BaseProcessor.metrics = {"PSNR": PSNR()}
+        BaseProcessor.datasets = self.build_dataset()
 
-        mode = self.get_cfg_val("option", "mode")
+        # プロセッサ定義
+        self.trainer = Trainer()
+        self.trainer.build_dataloader(batch_size=self.get_hparam("batch_size"),
+                                      shuffle=True,
+                                      num_workers=self.get_cfg_val("option", "num_workers"),
+                                      pin_memory=True,
+                                      drop_last=True)
+        self.trainer.epochs = self.get_hparam("epoch")
+        self.trainer.iteration = len(self.trainer.datasets[0]) // self.get_hparam("batch_size")
+        self.trainer.val_interval = self.get_cfg_val("option", "val_interval")
+        self.trainer.log_interval = self.get_cfg_val("option", "log_interval")
+        self.trainer.save_interval = self.get_cfg_val("option", "save_interval")
+        self.trainer.itr_digit = len(str(self.trainer.iteration))
 
-        assert isinstance(mode, str), f"[ERROR] bad mode type: {type(mode)}"
-        # 小文字に統一
-        mode = mode.lower()
-        assert (mode == "train" or mode == "test" or mode == "analyze"), f"[ERROR] bad mode: {mode}"
-        return
-        if mode == "train":
-            self.trainer(self.model, self.metrics)
-        elif mode == "test":
-            self.tester(self.model, self.metrics)
-        elif mode == "analyze":
-            self.analyzer(self.model)
+        BaseProcessor.logger.setLogDigits(epoch=self.get_hparam("epoch"), iteration=self.trainer.iteration)
+
+        self.tester = Tester()
+        self.trainer.logger.debug(f"\n{self.trainer.model}")
+        self.trainer.logger.debug("*** check global objects ***")
+        self.trainer.logger.debug(f"{id(self.trainer.model)} {id(self.tester.model)}")
+        self.trainer.logger.debug(f"logger: {id(self.trainer.logger)} {id(self.tester.logger)}")
+        self.trainer.logger.info("build completed")
+        self.down_cursor(1)
+
+    def build_dataset(self):
+        train_dataset = ImageToImageDataset(img_dir=self.get_path("dataset") + self.get_path("train"),
+                                            input_dir=self.get_path("input"),
+                                            target_dir=self.get_path("target"))
+        valid_dataset = ImageToImageDataset(img_dir=self.get_path("dataset") + self.get_path("valid"),
+                                            input_dir=self.get_path("input"),
+                                            target_dir=self.get_path("target"))
+        test_dataset = ImageToImageDataset(img_dir=self.get_path("dataset") + self.get_path("test"),
+                                           input_dir=self.get_path("input"),
+                                           target_dir=self.get_path("target"))
+        return [train_dataset, valid_dataset, test_dataset]
 
     def load_cfg(self, path):
         assert os.path.exists(path), f"\n[Error] ファイルが見つかりません \
@@ -75,63 +130,6 @@ class Runner(BaseRunner):
     
     def get_hparam(self, name: str):
         return self.get_cfg_val("hyperparam", name)
-
-# from scripts.analyzer import Analyzer
-# from loss.mse import MSELoss
-# from model.net import Net
-# from torch.optim import Adam
-
-# TRAIN = 0
-# TEST = 1
-
-# class Runner(Analyzer):
-#     def __init__(self):
-#         super().__init__()
-#         self.is_train = (self.args.mode == TRAIN)
-#         print(self.is_train)
-        
-#     def Run(self):
-#         self.Debug(msg="program beginning...")
-        
-#         # 環境設定
-#         # データセット作成
-#         self.SetDataset(self.cfg.GetPath("dataset"),
-#                         self.cfg.GetPath("input"),
-#                         self.cfg.GetPath("target"))
-#         # データローダー作成
-#         self.SetDataLoader(batch_size=self.cfg.GetHyperParam("batch_size"),
-#                            shuffle=self.is_train,
-#                            num_workers=self.cfg.GetHyperParam("num_workers"),
-#                            pin_memory=True,
-#                            drop_last=self.is_train)
-#         # ログ書式設定
-#         self.SetLogDigits(self.epochs, len(self.train_dataset) // self.cfg.GetHyperParam("batch_size") + 1)
-        
-#         # モデル定義
-#         self.model = Net()
-#         self.model.to(self.device)
-#         # オプティマイザ定義
-#         self.optimizer = Adam(self.model.parameters(), lr=self.cfg.GetHyperParam("lr"))
-#         # 損失関数設定
-#         self.criteria = MSELoss()
-#         # 使用プロセッサ設定
-#         self.SetDevice(device=self.cfg.GetInfo("option", "device"))
-
-#         # メイン処理実行
-#         self.Operate()
-
-#         # 終了処理
-#         self.Debug(msg="program finished.")
-
-#     def Operate(self):
-#         self.Info(f"running mode: {self.args.mode}")
-#         print("\n"*9)
-
-#         # Train
-#         if self.is_train:
-#             self.Train()
-#         # Test
-#         elif self.args.mode == TEST:
-#             pass
-#         else:
-#             self.Analyze()
+    
+    def down_cursor(self, n=0):
+        print(f"\033[{n}B")
