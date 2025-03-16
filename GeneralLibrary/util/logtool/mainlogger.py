@@ -1,5 +1,6 @@
 from logging import Logger
 import os
+from datetime import date
 from logging import StreamHandler, FileHandler, Formatter, DEBUG, INFO
 from .logfilter import LogFilter
 from .clifilter import CLIFilter
@@ -14,8 +15,17 @@ class MainLogger(Logger):
     # 出力ファイル名
     file_name = "output.log"
 
-    def __init__(self, dir,  name="main_logger", level = 0):
+    def __init__(self, dir, name="main_logger", level = 0):
         super().__init__(name, level)
+
+        # dirが存在しなければ作成
+        if not os.path.exists(dir):
+            os.mkdir(dir)
+
+        # ログファイルを作成
+        abs_file = os.path.join(dir, self.file_name)
+        with open(os.path.join(abs_file), mode="w") as f:
+            f.write(f"[Running Date: {date.today().strftime('%Y-%m-%d')}]\n\n")
         
         # ファイル出力の設定
         file_formatter = self.get_formatter(self.filefmt)
@@ -52,11 +62,15 @@ class MainLogger(Logger):
                                     "lr": lr,
                                     "loss": loss},
                          "n": 6})
+        
+    def info(self, msg, extra = {"n": 0}):
+        super().info(msg, extra=extra)
 
     def setLogDigits(self, epoch, iteration):
         if not self.hasHandlers():
             self.debug("[NOTICE] SetLogDigits failed. main_logger has no handlers.")
             return
+        assert isinstance(self.handlers[1].filters[0], LogFilter), f"[ERROR] bad filter type: {type(self.handlers[1].filters[0])}"
         self.handlers[1].filters[0].SetDigits(epoch, iteration)
 
     def get_formatter(self, kind):

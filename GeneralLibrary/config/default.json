@@ -1,5 +1,4 @@
 {
-    "debug": true,
     "path": {
         "dataset": "/home/matsukawa_3/datasets/EBB/Training/",
         "train": "/home/matsukawa_3/datasets/EBB/Training/",
@@ -10,7 +9,7 @@
         "output": "GeneralLibrary/outputs/"
     },
     "option": {
-        "mode": 0,
+        "mode": "null",
         "device": "cuda",
         "interval": 10,
         "val_interval": 1,
