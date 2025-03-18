@@ -6,7 +6,7 @@ from util.parser.mainparser import MainParser
 
 from .processors import BaseProcessor, Trainer, Tester
 from model import Net
-from metrics.psnr import PSNR
+from metrics import PSNR, SSIM
 from util.data.dataset import ImageToImageDataset
 
 class Runner(BaseRunner):
@@ -27,6 +27,7 @@ class Runner(BaseRunner):
 
         if mode == "train":
             self.trainer()
+            self.tester()
         # elif mode == "test":
         #     self.tester(self.model, self.metrics)
         # elif mode == "analyze":
@@ -44,7 +45,7 @@ class Runner(BaseRunner):
         self.cfg["option"]["mode"] = args.mode
 
         # 4. ログの設定
-        logger = MainLogger(dir=self.get_path("output"))
+        logger = MainLogger(save_dir=self.get_path("output"))
         # コンフィグ状況を出力
         logger.debug(self.show_cfg())
         BaseProcessor.logger = logger
@@ -58,8 +59,14 @@ class Runner(BaseRunner):
         model_class = globals()[self.get_cfg_val("model", "name")]
         BaseProcessor.device = self.get_cfg_val("option", "device")
         BaseProcessor.model = model_class().to(BaseProcessor.device)
-        BaseProcessor.metrics = {"PSNR": PSNR()}
         BaseProcessor.datasets = self.build_dataset()
+        # 評価指標を定義
+        BaseProcessor.metrics = {}
+        for m in self.get_hparam("metrics"):
+            metrics_class = globals()[m]
+            BaseProcessor.metrics[m] = metrics_class()
+            BaseProcessor.logger.debug(f"metrics added: {m} {type(BaseProcessor.metrics[m])}")
+
 
         # プロセッサ定義
         self.trainer = Trainer()
@@ -77,10 +84,10 @@ class Runner(BaseRunner):
 
         BaseProcessor.logger.setLogDigits(epoch=self.get_hparam("epoch"), iteration=self.trainer.iteration)
 
-        self.tester = Tester()
+        self.tester = Tester(save_dir=self.get_path("output"))
         self.trainer.logger.debug(f"\n{self.trainer.model}")
         self.trainer.logger.debug("*** check global objects ***")
-        self.trainer.logger.debug(f"{id(self.trainer.model)} {id(self.tester.model)}")
+        self.trainer.logger.debug(f"model: {id(self.trainer.model)} {id(self.tester.model)}")
         self.trainer.logger.debug(f"logger: {id(self.trainer.logger)} {id(self.tester.logger)}")
         self.trainer.logger.info("build completed")
         self.down_cursor(1)

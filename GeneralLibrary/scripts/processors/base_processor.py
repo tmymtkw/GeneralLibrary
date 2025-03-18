@@ -13,7 +13,10 @@ class BaseProcessor(ABC):
 
     def __init__(self):
         pass
+
+    def __call__(self):
+        self.process()
         
     @abstractmethod
-    def process(self, device, **kwargs):
+    def process(self):
         NotImplementedError()

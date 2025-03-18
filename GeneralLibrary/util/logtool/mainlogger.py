@@ -15,21 +15,21 @@ class MainLogger(Logger):
     # 出力ファイル名
     file_name = "output.log"
 
-    def __init__(self, dir, name="main_logger", level = 0):
+    def __init__(self, save_dir: str, name="main_logger", level = 0):
         super().__init__(name, level)
 
         # dirが存在しなければ作成
-        if not os.path.exists(dir):
-            os.mkdir(dir)
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
 
         # ログファイルを作成
-        abs_file = os.path.join(dir, self.file_name)
+        abs_file = os.path.join(save_dir, self.file_name)
         with open(os.path.join(abs_file), mode="w") as f:
             f.write(f"[Running Date: {date.today().strftime('%Y-%m-%d')}]\n\n")
         
         # ファイル出力の設定
         file_formatter = self.get_formatter(self.filefmt)
-        file_handler = FileHandler(os.path.join(dir, self.file_name), mode="a+", encoding="utf_8")
+        file_handler = FileHandler(os.path.join(save_dir, self.file_name), mode="a+", encoding="utf_8")
         file_handler.setFormatter(file_formatter)
         file_handler.setLevel(DEBUG)
         file_filter = LogFilter()

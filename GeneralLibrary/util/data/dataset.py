@@ -1,7 +1,7 @@
 import os
 from torch.utils.data import Dataset
 from torchvision import io
-from util.data.transforms import Stack, RandomFlip, RandomCrop, Convert
+from util.data.transforms import Stack, RandomFlip, RandomCrop, Convert, Normalize
 
 class ImageToImageDataset(Dataset):
     def __init__(self, img_dir, input_dir, target_dir, seed=42):
@@ -20,6 +20,7 @@ class ImageToImageDataset(Dataset):
         self.stack.Push(RandomCrop(height=128, width=128, seed=seed))
         self.stack.Push(RandomFlip(seed=seed))
         self.stack.Push(Convert(convert_type="float32"))
+        self.stack.Push(Normalize())
 
     def __len__(self) -> int:
         return len(self.input_id)
@@ -47,6 +48,8 @@ class ImageToImageDataset(Dataset):
             for file in os.listdir(os.path.join(self.img_dir, self.target_dir))
             if self.GetIsImage(file, False)
         ]
+        self.input_id = self.input_id[0:10]
+        self.target_id = self.target_id[0:10]
 
         print(os.path.join(self.img_dir, self.input_dir))
         print(f"total img: {self.__len__()}\n")

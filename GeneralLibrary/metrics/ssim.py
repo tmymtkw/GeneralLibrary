@@ -12,9 +12,10 @@ class SSIM():
         self.c1 = 0.01 ** 2
         self.c2 = 0.03 ** 2
 
-    def __call__(self, img_output, img_target, device):
+    def __call__(self, img_output, img_target):
         if self.kernel.device != img_output.device:
-            self.kernel = self.kernel.to(device)
+            img_output = img_output.to(self.kernel.device)
+            img_target = img_target.to(self.kernel.device)
         return self.GetSSIM(img_output, img_target)
         
     def GetSSIM(self, s, t):

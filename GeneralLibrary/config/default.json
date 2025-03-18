@@ -25,6 +25,7 @@
         "lr": 1.0e-3,
         "batch_size": 4,
         "iteration": 10000,
-        "num_workers": 4
+        "num_workers": 4,
+        "metrics": ["PSNR", "SSIM"]
     }
 }

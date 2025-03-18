@@ -1,5 +1,5 @@
 from .base_processor import BaseProcessor
-from torch import no_grad
+from torch import no_grad, mean
 from torch.utils.data import DataLoader
 
 class Trainer(BaseProcessor):
@@ -18,9 +18,6 @@ class Trainer(BaseProcessor):
         self.save_interval: int = 1
 
         self.itr_digit = 5
-
-    def __call__(self):
-        self.process()
 
     def process(self):
         self.logger.debug("function called: TRAIN")
@@ -110,16 +107,16 @@ class Trainer(BaseProcessor):
                 # 損失の計算
                 # loss = self.loss_handler(output, target)
                 # 精度の計算
-                # for key, metric in self.metrics.items():
-                #     accr[key] += metric(source, target).item()
+                for key, metric in self.metrics.items():
+                    accr[key] += mean(metric(output, target)).item()
                 
                 # 出力
                 if i == 1:
                     self.logger.debug(f"require_grad: {output.requires_grad}")
                 if i == 1 or i % (self.log_interval * self.dataloader.batch_size) == 0:
-                    msg = f"[valid] [{i:>{self.itr_digit}}/{len(self.datasets[1]):>{self.itr_digit}}] loss: {0.0:.9f} "
+                    msg = f"[valid] [{i:>{self.itr_digit}}/{len(self.datasets[1]):>{self.itr_digit}}] loss: {.0:.9f} "
                     for key, val in accr.items():
-                        msg += f"{key}: {0.0:.9f}"
+                        msg += f"| {key}: {val} "
                     self.logger.info(msg)
 
     def save_model(self, model):
