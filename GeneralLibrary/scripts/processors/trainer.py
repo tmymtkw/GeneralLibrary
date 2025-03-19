@@ -1,14 +1,16 @@
 from .base_processor import BaseProcessor
 from torch import no_grad, mean
 from torch.utils.data import DataLoader
+from importlib import import_module
+import sys, pprint
 
 class Trainer(BaseProcessor):
     def __init__(self):
         super().__init__()
 
         self.dataloader = None
-        # self.optimizer
-        # self.scheduler
+        self.optimizer = None
+        self.scheduler = None
         self.loss_handler: dict = None
 
         self.epochs: int = 10
@@ -129,3 +131,15 @@ class Trainer(BaseProcessor):
                                      num_workers=num_workers,
                                      pin_memory=pin_memory,
                                      drop_last=drop_last)
+        
+    def build_loss_handler(self, losses: list[str]):
+        self.loss_handler = {}
+        module = import_module(name="loss")
+        for loss in losses:
+            print(loss)
+            try:
+                loss_class = getattr(module, loss)
+                self.loss_handler[f"{loss}"] = loss_class()
+                self.logger.debug(f"loss added: {loss} {type(self.loss_handler[loss])}")
+            except AttributeError:
+                self.logger.debug(f"fatal: {loss}")

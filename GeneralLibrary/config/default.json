@@ -26,6 +26,7 @@
         "batch_size": 4,
         "iteration": 10000,
         "num_workers": 4,
-        "metrics": ["PSNR", "SSIM"]
+        "metrics": ["PSNR", "SSIM"],
+        "loss": ["MSELoss", "SSIMLoss"]
     }
 }

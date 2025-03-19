@@ -8,6 +8,8 @@ from .processors import BaseProcessor, Trainer, Tester
 from model import Net
 from metrics import PSNR, SSIM
 from util.data.dataset import ImageToImageDataset
+from torch.optim import Adam
+from scheduler.linear_cos import LinearCosineScheduler
 
 class Runner(BaseRunner):
     def __init__(self):
@@ -25,9 +27,9 @@ class Runner(BaseRunner):
         mode = mode.lower()
         assert (mode == "train" or mode == "test" or mode == "analyze"), f"\n[ERROR] bad mode: {mode}"
 
-        if mode == "train":
-            self.trainer()
-            self.tester()
+        # if mode == "train":
+        #     self.trainer()
+        #     self.tester()
         # elif mode == "test":
         #     self.tester(self.model, self.metrics)
         # elif mode == "analyze":
@@ -68,13 +70,20 @@ class Runner(BaseRunner):
             BaseProcessor.logger.debug(f"metrics added: {m} {type(BaseProcessor.metrics[m])}")
 
 
-        # プロセッサ定義
+        # trainer
         self.trainer = Trainer()
+        # インスタンス変数(trainer)
         self.trainer.build_dataloader(batch_size=self.get_hparam("batch_size"),
                                       shuffle=True,
                                       num_workers=self.get_cfg_val("option", "num_workers"),
                                       pin_memory=True,
                                       drop_last=True)
+        # TODO
+        self.trainer.optimizer = Adam(params=self.trainer.model.parameters(),
+                                      lr=self.get_hparam("lr"))
+        self.trainer.scheduler = LinearCosineScheduler(optimizer=self.trainer.optimizer)
+        # TODO: loss handler
+        self.trainer.build_loss_handler(losses=self.get_hparam("loss"))
         self.trainer.epochs = self.get_hparam("epoch")
         self.trainer.iteration = len(self.trainer.datasets[0]) // self.get_hparam("batch_size")
         self.trainer.val_interval = self.get_cfg_val("option", "val_interval")
@@ -84,6 +93,7 @@ class Runner(BaseRunner):
 
         BaseProcessor.logger.setLogDigits(epoch=self.get_hparam("epoch"), iteration=self.trainer.iteration)
 
+        # tester
         self.tester = Tester(save_dir=self.get_path("output"))
         self.trainer.logger.debug(f"\n{self.trainer.model}")
         self.trainer.logger.debug("*** check global objects ***")
