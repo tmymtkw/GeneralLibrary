@@ -15,9 +15,9 @@ class MainParser(ArgumentParser):
         # mode
         self.add_argument(
             "mode",
-            type=int,
-            default=0,
-            help="[0:train 1:test] 学習と推論の選択を行う引数 "
+            type=str,
+            default="train",
+            help="[train test analyze] 学習と推論の選択を行う引数 "
         )
         # コンフィグのパス
         self.add_argument(

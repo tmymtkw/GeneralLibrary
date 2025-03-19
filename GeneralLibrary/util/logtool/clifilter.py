@@ -6,7 +6,7 @@ CLOSE = "\033[0m"
 class CLIFilter():
 
     def __init__(self, length=40):
-        print("CLIFilter init")
+        print("CLIFilter init\n")
         self.length = length
         self.losses = []
 
