@@ -1,6 +1,6 @@
 from .base_processor import BaseProcessor
 import os
-from torch import no_grad, mean
+from torch import no_grad, mean, cat
 from torchvision.utils import save_image
 
 class Tester(BaseProcessor):
@@ -37,7 +37,8 @@ class Tester(BaseProcessor):
 
                 self.logger.info(self.make_cli_msg(accr=cur_accr, img_num=i, img_shape=source.shape), extra={"n":1})
 
-                # save_image(output, self.save_dir+f"{i}.png")
+                output = cat((source, output, target), dim=0)
+                save_image(output, self.save_dir+f"{i}.png")
         
         print("\033[3B")
         self.logger.info("[result]" + self.metric_to_str(all_accr))

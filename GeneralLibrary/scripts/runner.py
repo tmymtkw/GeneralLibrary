@@ -5,9 +5,12 @@ from util.logtool.mainlogger import MainLogger
 from util.parser.mainparser import MainParser
 
 from .processors import BaseProcessor, Trainer, Tester
-from model import Net
-from metrics import PSNR, SSIM
 from util.data.dataset import ImageToImageDataset
+from torch import load
+from torch.optim import Adam
+from scheduler.linear_cos import LinearCosineScheduler
+
+from importlib import import_module
 
 class Runner(BaseRunner):
     def __init__(self):
@@ -28,10 +31,10 @@ class Runner(BaseRunner):
         if mode == "train":
             self.trainer()
             self.tester()
-        # elif mode == "test":
-        #     self.tester(self.model, self.metrics)
-        # elif mode == "analyze":
-        #     self.analyzer(self.model)
+        elif mode == "test":
+            self.tester()
+        elif mode == "analyze":
+            self.analyzer()
 
     def setup(self):
         # 1. コマンドライン引数受け取り
@@ -43,6 +46,8 @@ class Runner(BaseRunner):
 
         # 3. コンフィグ書き換え
         self.cfg["option"]["mode"] = args.mode
+        if (args.weight_path is not None):
+            self.cfg["option"]["weight"] = args.weight_path
 
         # 4. ログの設定
         logger = MainLogger(save_dir=self.get_path("output"))
@@ -56,25 +61,34 @@ class Runner(BaseRunner):
         BaseProcessor.logger.info("building...")
         self.down_cursor(1)
         # BaseProcessorのクラス変数を定義(全てのインスタンスで共有)
-        model_class = globals()[self.get_cfg_val("model", "name")]
         BaseProcessor.device = self.get_cfg_val("option", "device")
-        BaseProcessor.model = model_class().to(BaseProcessor.device)
+        BaseProcessor.model = self.get_model()
         BaseProcessor.datasets = self.build_dataset()
+        BaseProcessor.out_dir = self.get_path("output")
         # 評価指標を定義
         BaseProcessor.metrics = {}
+        metrics_module = import_module(name="metrics")
         for m in self.get_hparam("metrics"):
-            metrics_class = globals()[m]
+            metrics_class = getattr(metrics_module, m)
             BaseProcessor.metrics[m] = metrics_class()
             BaseProcessor.logger.debug(f"metrics added: {m} {type(BaseProcessor.metrics[m])}")
 
 
-        # プロセッサ定義
+        # trainer
         self.trainer = Trainer()
+        # インスタンス変数(trainer)
         self.trainer.build_dataloader(batch_size=self.get_hparam("batch_size"),
                                       shuffle=True,
                                       num_workers=self.get_cfg_val("option", "num_workers"),
                                       pin_memory=True,
                                       drop_last=True)
+        # TODO
+        self.trainer.optimizer = Adam(params=self.trainer.model.parameters(),
+                                      lr=self.get_hparam("lr"))
+        self.trainer.scheduler = LinearCosineScheduler(optimizer=self.trainer.optimizer,
+                                                       flag_epoch=3,
+                                                       max_epochs=self.get_hparam("epoch"))
+        self.trainer.build_loss_handler(losses=self.get_hparam("loss"))
         self.trainer.epochs = self.get_hparam("epoch")
         self.trainer.iteration = len(self.trainer.datasets[0]) // self.get_hparam("batch_size")
         self.trainer.val_interval = self.get_cfg_val("option", "val_interval")
@@ -84,8 +98,9 @@ class Runner(BaseRunner):
 
         BaseProcessor.logger.setLogDigits(epoch=self.get_hparam("epoch"), iteration=self.trainer.iteration)
 
+        # tester
         self.tester = Tester(save_dir=self.get_path("output"))
-        self.trainer.logger.debug(f"\n{self.trainer.model}")
+        # self.trainer.logger.debug(f"\n{self.trainer.model}")
         self.trainer.logger.debug("*** check global objects ***")
         self.trainer.logger.debug(f"model: {id(self.trainer.model)} {id(self.tester.model)}")
         self.trainer.logger.debug(f"logger: {id(self.trainer.logger)} {id(self.tester.logger)}")
@@ -119,6 +134,22 @@ class Runner(BaseRunner):
         # 出力ディレクトリ名を日時で更新
         d = datetime.now().strftime("%Y-%m%d-%H%M%S") + "/"
         self.cfg["path"]["output"] += d
+
+    def get_model(self):
+        models = import_module(name="model")
+        model_class = getattr(models, self.get_cfg_val("model", "name"))
+        model = model_class().to(self.get_cfg_val("option", "device"))
+
+        if (self.get_cfg_val("option", "weight") is not None):
+            BaseProcessor.logger.info(f"load weight: {self.get_cfg_val('option', 'weight')}")
+            weight = load(self.get_cfg_val('option', 'weight'), weights_only=True)
+            # for key, val in weight.items():
+            #     print(f"{key} : {val}\n")
+            model.load_state_dict(weight["model_state_dict"])
+        else:
+            BaseProcessor.logger.info("model is created without weight.")
+
+        return model
 
     def show_cfg(self):
         msg = ""

@@ -10,6 +10,7 @@ class BaseProcessor(ABC):
     metrics: dict = None
     datasets: list[Dataset] = None # [train valid test]
     device: str = None
+    out_dir:str = None
 
     def __init__(self):
         pass

@@ -11,21 +11,23 @@
     "option": {
         "mode": "null",
         "device": "cuda",
-        "interval": 10,
+        "weight": null,
+        "interval": 5,
         "val_interval": 5,
-        "log_interval": 50,
-        "save_interval": 1,
+        "log_interval": 1,
+        "save_interval": 10,
         "num_workers": 4
     },
     "model": {
-        "name": "Net"
+        "name": "UIR_PolyKernel"
     },
     "hyperparam": {
-        "epoch": 5,
+        "epoch": 50,
         "lr": 1.0e-3,
-        "batch_size": 4,
+        "batch_size": 2,
         "iteration": 10000,
         "num_workers": 4,
-        "metrics": ["PSNR", "SSIM"]
+        "metrics": ["PSNR", "SSIM"],
+        "loss": ["MSELoss", "SSIMLoss"]
     }
 }

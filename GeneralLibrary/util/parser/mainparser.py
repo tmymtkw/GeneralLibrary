@@ -35,6 +35,13 @@ class MainParser(ArgumentParser):
             help="[cuda, cpu] プログラムを実行するプロセッサ"
         )
 
+        self.add_argument(
+            "--weight_path", "-w",
+            type=str,
+            default=None,
+            help="[string] 学習済みの重みへのパス"
+        )
+
 if __name__ == "__main__":
     parser = MainParser()
 
