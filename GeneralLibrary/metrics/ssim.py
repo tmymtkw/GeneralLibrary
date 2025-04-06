@@ -13,20 +13,18 @@ class SSIM():
         self.c2 = 0.03 ** 2
 
     def __call__(self, img_output, img_target):
-        if self.kernel.device != img_output.device:
-            img_output = img_output.to(self.kernel.device)
-            img_target = img_target.to(self.kernel.device)
-        return self.GetSSIM(img_output, img_target)
+        kernel = self.kernel.to(device=img_output.device)
+        return self.GetSSIM(img_output, img_target, kernel)
         
-    def GetSSIM(self, s, t):
+    def GetSSIM(self, s, t, kernel):
         with torch.no_grad():
             # Compute means
-            ux = conv2d(s, self.kernel, padding=self.padding, groups=3)
-            uy = conv2d(t, self.kernel, padding=self.padding, groups=3)
+            ux = conv2d(s, kernel, padding=self.padding, groups=3)
+            uy = conv2d(t, kernel, padding=self.padding, groups=3)
             # Compute variances
-            uxx = conv2d(s * s, self.kernel, padding=self.padding, groups=3)
-            uyy = conv2d(t * t, self.kernel, padding=self.padding, groups=3)
-            uxy = conv2d(s * t, self.kernel, padding=self.padding, groups=3)
+            uxx = conv2d(s * s, kernel, padding=self.padding, groups=3)
+            uyy = conv2d(t * t, kernel, padding=self.padding, groups=3)
+            uxy = conv2d(s * t, kernel, padding=self.padding, groups=3)
 
             # print(ux.shape, uy.shape, uxx.shape, uyy.shape, uxy.shape)
             return ((2 * ux * uy + self.c1) * (2 * (uxy - ux * uy) + self.c2) 

@@ -1,14 +1,16 @@
 from .base_processor import BaseProcessor
-from torch import no_grad, mean
+from torch import no_grad, mean, save
 from torch.utils.data import DataLoader
 from importlib import import_module
-import sys, pprint
+
+# from torch.optim import Optimizer
+# from torch.optim.lr_scheduler import LRScheduler
 
 class Trainer(BaseProcessor):
     def __init__(self):
         super().__init__()
 
-        self.dataloader = None
+        self.dataloader:DataLoader = None
         self.optimizer = None
         self.scheduler = None
         self.loss_handler: dict = None
@@ -50,39 +52,44 @@ class Trainer(BaseProcessor):
         self.model.train()
 
         # 損失のリセット
-        loss = None
+        # loss = None
 
         for i, (source, target) in enumerate(self.dataloader, 1):
             # deviceにデータを移動
             source = source.to(self.device)
             target = target.to(self.device)
             # 勾配情報をリセット
-            # self.optimizer.zero_grad()
+            self.optimizer.zero_grad()
             # 順伝播
             output = self.model(source)
             # 損失の計算
             # loss = self.loss_handler(output, target)
+            loss_dict = {}
+            loss = 0
+            for key, func in self.loss_handler.items():
+                loss_dict[key] = func(output, target)
+                loss += loss_dict[key]
             # 逆伝播
-            # loss.backward()
+            loss.backward()
             # オプティマイザの更新
-            # self.optimizer.step()
+            self.optimizer.step()
             # スケジューラの更新(warmup)
-            # if self.scheduler is not None:
-            #     try:
-            #         self.scheduler.warm()
-            #     except AttributeError:
-            #         pass
+            if self.scheduler is not None:
+                try:
+                    self.scheduler.warm()
+                except AttributeError:
+                    pass
             # 標準出力
             if i == 1:
                 self.logger.debug(f"require_grad: {output.requires_grad}")
             if i == 1 or i % self.log_interval == 0:
                 self.logger.displayStatus(epoch, i,
                                           self.epochs, self.iteration,
-                                          0,
-                                          0)
+                                          self.optimizer.param_groups[0]["lr"],
+                                          loss=loss.item())
 
         # スケジューラの更新(step)
-        # self.scheduler.step()
+        self.scheduler.step()
 
     def validate(self):
         self.logger.debug("-----valid-----")
@@ -91,7 +98,7 @@ class Trainer(BaseProcessor):
         self.model.eval()
 
         # 損失・精度のリセット
-        loss = None
+        # loss = None
         accr = dict()
         for key in self.metrics:
             accr[key] = 0
@@ -118,11 +125,27 @@ class Trainer(BaseProcessor):
                 if i == 1 or i % (self.log_interval * self.dataloader.batch_size) == 0:
                     msg = f"[valid] [{i:>{self.itr_digit}}/{len(self.datasets[1]):>{self.itr_digit}}] loss: {.0:.9f} "
                     for key, val in accr.items():
-                        msg += f"| {key}: {val} "
+                        msg += f"| {key}: {val/i:.9f} "
                     self.logger.info(msg)
 
-    def save_model(self, model):
+    def save_model(self, epoch, loss=0.):
         self.logger.debug("save model")
+        if self.device == "cuda":
+            save(obj={"epoch": epoch,
+                    "model_state_dict": self.model.to("cpu").state_dict(),
+                    "optimizer_state_dict": self.optimizer.state_dict(),
+                    "loss": loss},
+                f= self.out_dir + f"weight_{epoch}.pth")
+            # .to()によるメモリ移動を戻す
+            self.model.to("cuda")
+        else:
+            save(obj={"epoch": epoch,
+                    "model_state_dict": self.model.state_dict(),
+                    "optimizer_state_dict": self.optimizer.state_dict(),
+                    "loss": loss},
+                f= self.out_dir + f"weight_{epoch}.pth")
+        
+        self.logger.debug(f"model at epoch {epoch} weight is saved.")
 
     def build_dataloader(self, batch_size=4, shuffle=True, num_workers=2, pin_memory=True, drop_last=True):
         self.dataloader = DataLoader(self.datasets[0],
@@ -136,7 +159,6 @@ class Trainer(BaseProcessor):
         self.loss_handler = {}
         module = import_module(name="loss")
         for loss in losses:
-            print(loss)
             try:
                 loss_class = getattr(module, loss)
                 self.loss_handler[f"{loss}"] = loss_class()
